@@ -110,19 +110,77 @@ def safe_float(value):
         return f if math.isfinite(f) else 0.0
     except:
         return 0.0
+import os
 
+# Mapping of stock symbols to their corresponding CSV files
+STOCK_CSV_MAPPING = {
+    'RELIANCE.NS': 'RELIANCE.NS_history (2).csv',
+    'TCS.NS': 'TCS.NS_history.csv',
+    'INFY.NS': 'INFY.NS_history.csv',
+    'HDFCBANK.NS': 'HDFCBANK.NS_history.csv'
+}
 
-# -------- Strategy --------
-# -------- Buy and Hold Strategy --------
-class BuyAndHold(Strategy):
-    def init(self):
-        self.bought = False
+def get_csv_path(symbol):
+    """Get the CSV file path for a given stock symbol"""
+    if symbol not in STOCK_CSV_MAPPING:
+        raise ValueError(f"No CSV file found for symbol: {symbol}")
     
-    def next(self):
-        # Buy on first day and hold
-        if not self.bought:
-            self.buy()
-            self.bought = True
+    csv_filename = STOCK_CSV_MAPPING[symbol]
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(script_dir, csv_filename)
+    
+    if not os.path.exists(csv_path):
+        raise FileNotFoundError(f"CSV file not found: {csv_path}")
+    
+    return csv_path
+
+def load_stock_data_from_csv(symbol, start_date, end_date):
+    try:
+        print(f"Loading CSV for {symbol} from {start_date} to {end_date}")
+
+        # Get the appropriate CSV file path for the symbol
+        csv_path = get_csv_path(symbol)
+        print(f"Using CSV file: {csv_path}")
+        
+        df = pd.read_csv(csv_path)
+
+        # Ensure Date column exists
+        if "Date" not in df.columns:
+            raise ValueError("CSV missing 'Date' column")
+
+        # Parse Date column
+        df["Date"] = pd.to_datetime(df["Date"], utc=True)   # force UTC
+        df["Date"] = df["Date"].dt.tz_localize(None)        # remove timezone info
+        df.set_index("Date", inplace=True)
+
+        # Convert start/end to datetime (naive)
+        start_dt = pd.to_datetime(start_date)
+        end_dt = pd.to_datetime(end_date)
+
+        # Filter by date range
+        df = df.loc[(df.index >= start_dt) & (df.index <= end_dt)]
+        print(f"Data after filtering: {df.shape}")
+
+        # Keep required columns
+        expected_cols = ["Open", "High", "Low", "Close", "Volume"]
+        available_cols = [col for col in expected_cols if col in df.columns]
+
+        if len(available_cols) < len(expected_cols):
+            raise ValueError(f"CSV missing required columns. Found: {df.columns}")
+
+        return df[expected_cols]
+
+    except ValueError as e:
+        print(f"Error: {e}")
+        return pd.DataFrame()
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        return pd.DataFrame()
+    except Exception as e:
+        print(f"Error loading CSV for {symbol}: {e}")
+        return pd.DataFrame()
+
 
 
 # -------- Moving Average Crossover Strategy --------
@@ -356,7 +414,8 @@ def run_backtest():
         momentum_threshold = data.get('momentumThreshold', 0.02)
         
         # Download data
-        stock_data = safe_yfinance_download(symbol, start_date, end_date)
+        stock_data = load_stock_data_from_csv(symbol, start_date, end_date)
+        #stock_data = safe_yfinance_download(symbol, start_date, end_date)
         print(f"Downloaded data shape: {stock_data.shape}")
         
         if stock_data.empty:
@@ -753,49 +812,49 @@ def get_trading_signals():
         }), 500
 
 # Yahoo Finance API endpoints for real-time data
-@app.route('/api/realtime/<symbol>')
-def get_realtime_data(symbol):
-    try:
-        # Fetch real-time data from Yahoo Finance using safe wrapper
-        info = safe_yfinance_ticker_info(symbol)
+# @app.route('/api/realtime/<symbol>')
+# def get_realtime_data(symbol):
+#     try:
+#         # Fetch real-time data from Yahoo Finance using safe wrapper
+#         info = safe_yfinance_ticker_info(symbol)
         
-        # Get short history for price movement
-        hist_data = safe_yfinance_download(symbol, 
-            start_date=(pd.Timestamp.now() - pd.Timedelta(days=2)).strftime('%Y-%m-%d'),
-            end_date=pd.Timestamp.now().strftime('%Y-%m-%d'))
+#         # Get short history for price movement
+#         hist_data = safe_yfinance_download(symbol, 
+#             start_date=(pd.Timestamp.now() - pd.Timedelta(days=2)).strftime('%Y-%m-%d'),
+#             end_date=pd.Timestamp.now().strftime('%Y-%m-%d'))
         
-        if hist_data.empty:
-            return jsonify({"success": False, "error": f"No data found for {symbol}"}), 400
+#         if hist_data.empty:
+#             return jsonify({"success": False, "error": f"No data found for {symbol}"}), 400
         
-        latest = hist.iloc[-1]
-        previous = hist.iloc[-2] if len(hist) > 1 else latest
+#         latest = hist.iloc[-1]
+#         previous = hist.iloc[-2] if len(hist) > 1 else latest
         
-        current_price = float(latest['Close'])
-        previous_price = float(previous['Close'])
-        change = current_price - previous_price
-        change_percent = (change / previous_price) * 100 if previous_price > 0 else 0
+#         current_price = float(latest['Close'])
+#         previous_price = float(previous['Close'])
+#         change = current_price - previous_price
+#         change_percent = (change / previous_price) * 100 if previous_price > 0 else 0
         
-        return jsonify({
-            "success": True,
-            "data": {
-                "symbol": symbol.replace('.NS', ''),
-                "name": info.get('longName', symbol),
-                "price": current_price,
-                "change": change,
-                "changePercent": change_percent,
-                "volume": int(latest['Volume']),
-                "high": float(latest['High']),
-                "low": float(latest['Low']),
-                "open": float(latest['Open']),
-                "marketCap": info.get('marketCap', 0),
-                "pe": info.get('trailingPE', 0),
-                "sector": info.get('sector', 'Unknown')
-            }
-        })
+#         return jsonify({
+#             "success": True,
+#             "data": {
+#                 "symbol": symbol.replace('.NS', ''),
+#                 "name": info.get('longName', symbol),
+#                 "price": current_price,
+#                 "change": change,
+#                 "changePercent": change_percent,
+#                 "volume": int(latest['Volume']),
+#                 "high": float(latest['High']),
+#                 "low": float(latest['Low']),
+#                 "open": float(latest['Open']),
+#                 "marketCap": info.get('marketCap', 0),
+#                 "pe": info.get('trailingPE', 0),
+#                 "sector": info.get('sector', 'Unknown')
+#             }
+#         })
         
-    except Exception as e:
-        print(f"Error fetching real-time data for {symbol}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+#     except Exception as e:
+#         print(f"Error fetching real-time data for {symbol}: {str(e)}")
+#         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/market-overview')
 def get_market_overview():
