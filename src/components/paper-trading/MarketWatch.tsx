@@ -94,8 +94,8 @@ export function MarketWatch() {
 
   useEffect(() => {
     fetchMarketData();
-    // Refresh data every 30 seconds
-    const interval = setInterval(fetchMarketData, 30000);
+    // Refresh data every 5 minutes to avoid rate limiting
+    const interval = setInterval(fetchMarketData, 300000);
     return () => clearInterval(interval);
   }, []);
 

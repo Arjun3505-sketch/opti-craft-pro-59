@@ -141,11 +141,11 @@ export function TradingInterface({ portfolio, onTradeExecuted, userId }: Trading
   useEffect(() => {
     fetchStockData();
     fetchPositions();
-    // Refresh data every 30 seconds
+    // Refresh data every 5 minutes to avoid rate limiting
     const interval = setInterval(() => {
       fetchStockData();
       fetchPositions();
-    }, 30000);
+    }, 300000);
     return () => clearInterval(interval);
   }, [portfolio?.id]);
 

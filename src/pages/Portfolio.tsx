@@ -195,8 +195,8 @@ export default function Portfolio() {
       // Update prices immediately
       updatePositionPrices();
       
-      // Set up interval for price updates every 30 seconds
-      const priceUpdateInterval = setInterval(updatePositionPrices, 30000);
+      // Set up interval for price updates every 5 minutes to avoid rate limiting
+      const priceUpdateInterval = setInterval(updatePositionPrices, 300000);
       
       return () => clearInterval(priceUpdateInterval);
     }
