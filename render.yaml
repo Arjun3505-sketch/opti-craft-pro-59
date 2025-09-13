@@ -1,0 +1,88 @@
+services:
+  # Trading LLM Backend Service
+  - type: web
+    name: trading-llm-backend
+    env: python
+    plan: starter
+    buildCommand: |
+      cd trading_llm
+      pip install -r requirements.txt
+    startCommand: |
+      cd trading_llm
+      gunicorn --bind 0.0.0.0:$PORT --workers 4 --timeout 120 app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        value: d31talhr01qsprr2hh0gd31talhr01qsprr2hh10
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "False"
+    healthCheckPath: /health
+    autoDeploy: true
+    branch: main
+    rootDir: trading_llm
+
+  # Main Frontend Application
+  - type: web
+    name: alphaforge-frontend
+    env: static
+    plan: starter
+    buildCommand: |
+      npm install
+      npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_API_BASE_URL
+        value: https://trading-llm-backend.onrender.com
+    autoDeploy: true
+    branch: main
+    rootDir: .
+
+  # Streamlit Trading Dashboard (Optional)
+  - type: web
+    name: trading-dashboard
+    env: python
+    plan: starter
+    buildCommand: |
+      cd trading_llm
+      pip install -r requirements.txt
+    startCommand: |
+      cd trading_llm
+      streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        value: d31talhr01qsprr2hh0gd31talhr01qsprr2hh10
+    autoDeploy: true
+    branch: main
+    rootDir: trading_llm
+# Database (if you need a PostgreSQL database)
+# databases:
+#   - name: alphaforge-db
+#     plan: starter
+#     databaseName: alphaforge
+#     user: alphaforge_user
+
+# Environment Variables that need to be set in Render Dashboard:
+# SUPABASE_URL: Your Supabase project URL
+# SUPABASE_ANON_KEY: Your Supabase anonymous key
+# GEMINI_API_KEY: Your Google Gemini API key
