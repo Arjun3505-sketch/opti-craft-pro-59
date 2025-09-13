@@ -35,6 +35,8 @@ export function TradingChatbot({ className }: TradingChatbotProps) {
   const [hasSetTraderId, setHasSetTraderId] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const baseURL = "http://localhost:5001"; // ✅ points to your Flask backend
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -68,20 +70,13 @@ export function TradingChatbot({ className }: TradingChatbotProps) {
   };
 
   const callTradingAPI = async (query: string, endpoint: string) => {
-    // Two backends: legacy on 5000, enhanced (Supabase + Finnhub) on 5001
-    const legacyBaseURL = "http://localhost:5000";
-    const enhancedBaseURL = "http://localhost:5001";
-
     try {
       if (endpoint === "recommendations") {
-        // Validate and get recommendations from enhanced service (Supabase-backed)
         const response = await fetch(
-          `${enhancedBaseURL}/api/recommendations/${traderId}`,
+          `${baseURL}/api/recommendations/${traderId}`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               query,
               symbols: ["AAPL", "GOOGL", "MSFT", "TSLA", "NVDA"],
@@ -89,48 +84,23 @@ export function TradingChatbot({ className }: TradingChatbotProps) {
             }),
           }
         );
-
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
       } else if (endpoint === "market-analysis") {
         const response = await fetch(
-          `${enhancedBaseURL}/api/market-analysis?symbols=AAPL,GOOGL,MSFT,TSLA,NVDA`,
-          {
-            method: "GET",
-          }
+          `${baseURL}/api/market-analysis?symbols=AAPL,GOOGL,MSFT,TSLA,NVDA`
         );
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
-      } else if (endpoint === "risk-analysis") {
-        const response = await fetch(
-          `${legacyBaseURL}/api/risk-analysis/${traderId}`,
-          {
-            method: "GET",
-          }
-        );
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return await response.json();
-      } else if (endpoint === "trading-signals") {
-        const response = await fetch(`${legacyBaseURL}/api/trading-signals`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            symbols: ["AAPL", "GOOGL", "MSFT", "TSLA", "NVDA"],
-          }),
-        });
-
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
       } else if (endpoint.startsWith("stock-price:")) {
         const symbol = endpoint.split(":")[1];
         const response = await fetch(
-          `${enhancedBaseURL}/api/stock-data/${encodeURIComponent(symbol)}`,
-          { method: "GET" }
+          `${baseURL}/api/stock-data/${encodeURIComponent(symbol)}`
         );
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+      } else if (endpoint === "portfolio") {
+        const response = await fetch(`${baseURL}/api/portfolio/${traderId}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
       }
@@ -141,14 +111,11 @@ export function TradingChatbot({ className }: TradingChatbotProps) {
 
   const validateTraderId = async (traderId: string): Promise<boolean> => {
     try {
-      // Validate against enhanced service which checks Supabase
       const response = await fetch(
-        `http://localhost:5001/api/recommendations/${traderId}`,
+        `${baseURL}/api/recommendations/${traderId}`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             query: "validate",
             symbols: ["AAPL"],
@@ -167,11 +134,8 @@ export function TradingChatbot({ className }: TradingChatbotProps) {
 
   const processUserMessage = async (message: string) => {
     if (!hasSetTraderId) {
-      // First message should be trader ID
       if (message.trim()) {
         const traderId = message.trim();
-
-        // Validate trader ID
         const loadingMessageId = addMessage(
           "Validating your Trader ID...",
           "bot",
@@ -189,16 +153,13 @@ export function TradingChatbot({ className }: TradingChatbotProps) {
 
 • Market analysis and insights
 • Personalized trading recommendations
-• Portfolio risk analysis
-• Trading signals for specific stocks
-• Technical analysis
-
-What would you like to know about the markets today?`
+• Portfolio details
+• Stock prices`
           );
         } else {
           updateMessage(
             loadingMessageId,
-            `Sorry, I couldn't validate the Trader ID "${traderId}". Please make sure you're entering a valid Trader ID (at least 3 characters) and that the trading backend is running on localhost:5000.`
+            `Sorry, I couldn't validate the Trader ID "${traderId}". Please make sure you're entering a valid Trader ID.`
           );
         }
       } else {
@@ -214,77 +175,39 @@ What would you like to know about the markets today?`
     );
 
     try {
-      // Determine which API to call based on message content
       const lowerMessage = message.toLowerCase();
       let response;
 
       if (
         lowerMessage.includes("market") ||
         lowerMessage.includes("analysis") ||
-        lowerMessage.includes("sentiment") ||
-        lowerMessage.includes("trend")
+        lowerMessage.includes("sentiment")
       ) {
         response = await callTradingAPI(message, "market-analysis");
         if (response.success) {
-          const marketData = response.market_data;
           const analysis = response.analysis;
-
-          let responseText = `## Market Analysis\n\n${analysis}\n\n### Key Market Data:\n`;
-          Object.entries(marketData).forEach(
-            ([symbol, data]: [string, any]) => {
-              responseText += `\n**${symbol}**: $${data.current_price?.toFixed(
-                2
-              )} (${data.change_percent?.toFixed(2)}%)\n`;
-            }
+          updateMessage(
+            loadingMessageId,
+            `📊 **Market Analysis**\n\n${analysis}`
           );
-
-          updateMessage(loadingMessageId, responseText);
         }
       } else if (
-        lowerMessage.includes("risk") ||
-        lowerMessage.includes("portfolio")
+        lowerMessage.includes("portfolio") ||
+        lowerMessage.includes("holdings")
       ) {
-        response = await callTradingAPI(message, "risk-analysis");
+        response = await callTradingAPI(message, "portfolio");
         if (response.success) {
-          const riskData = response.risk_analysis;
-          const responseText = `## Portfolio Risk Analysis
-
-**Risk Score**: ${riskData.risk_score?.toFixed(1)}/100 (${riskData.risk_level})
-**Portfolio Beta**: ${riskData.portfolio_beta?.toFixed(2)}
-**Max Position Weight**: ${riskData.max_position_weight?.toFixed(1)}%
-
-### Risk Recommendations:
-${
-  riskData.recommendations?.map((rec: string) => `• ${rec}`).join("\n") ||
-  "No specific recommendations at this time."
-}
-
-### Sector Allocation:
-${Object.entries(riskData.sector_allocation || {})
-  .map(
-    ([sector, weight]: [string, any]) => `• ${sector}: ${weight.toFixed(1)}%`
-  )
-  .join("\n")}`;
-
-          updateMessage(loadingMessageId, responseText);
-        }
-      } else if (
-        lowerMessage.includes("signal") ||
-        lowerMessage.includes("buy") ||
-        lowerMessage.includes("sell") ||
-        lowerMessage.includes("trade")
-      ) {
-        response = await callTradingAPI(message, "trading-signals");
-        if (response.success) {
-          const signals = response.signals;
-          let responseText = `## Trading Signals\n\n`;
-
-          Object.entries(signals).forEach(([symbol, signal]: [string, any]) => {
-            responseText += `**${symbol}**: ${signal.signal} (${signal.strength}, ${signal.confidence}% confidence)\n`;
-            responseText += `${signal.ai_analysis}\n\n`;
+          const portfolio = response.portfolio;
+          const metrics = response.metrics;
+          let portfolioText = `📂 **Portfolio Overview**\n\nValue: $${metrics.total_portfolio_value?.toFixed(
+            2
+          )}\nWin Rate: ${metrics.win_rate?.toFixed(1)}%\nTrades: ${
+            metrics.total_trades
+          }\n\nPositions:\n`;
+          portfolio.positions.forEach((pos: any) => {
+            portfolioText += `• ${pos.symbol}: ${pos.quantity} @ $${pos.current_market_price}\n`;
           });
-
-          updateMessage(loadingMessageId, responseText);
+          updateMessage(loadingMessageId, portfolioText);
         }
       } else if (
         /(?:price|quote|current\s+price)\s+of\s+([A-Za-z]{1,5})/.test(
@@ -300,18 +223,16 @@ ${Object.entries(riskData.sector_allocation || {})
         response = await callTradingAPI(message, `stock-price:${symbol}`);
         if (response.success) {
           const data = response.data || {};
-          const price = data.current_price ?? data.price ?? data.c ?? 0;
-          const changePct = data.change_percent ?? data.dp ?? 0;
-          const source = data.source || "Finnhub";
+          const price = data.current_price ?? 0;
+          const changePct = data.change_percent ?? 0;
           updateMessage(
             loadingMessageId,
-            `Current price for ${symbol}: $${Number(price).toFixed(
+            `💵 **${symbol} Price**: $${Number(price).toFixed(
               2
-            )} (${Number(changePct).toFixed(2)}%).\nSource: ${source}`
+            )} (${Number(changePct).toFixed(2)}%)`
           );
         }
       } else {
-        // General query - use recommendations endpoint
         response = await callTradingAPI(message, "recommendations");
         if (response.success) {
           updateMessage(loadingMessageId, response.recommendations);
@@ -324,22 +245,18 @@ ${Object.entries(riskData.sector_allocation || {})
     } catch (error) {
       updateMessage(
         loadingMessageId,
-        `I apologize, but I'm having trouble connecting to the trading data service right now. Please make sure your trading backend is running on localhost:5000.\n\nError: ${error}`
+        `⚠️ I couldn’t connect to the backend on port 5001.\n\nError: ${error}`
       );
     }
   };
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim()) return;
-
     const userMessage = inputMessage.trim();
     setInputMessage("");
     setIsLoading(true);
 
-    // Add user message
     addMessage(userMessage, "user");
-
-    // Process the message
     await processUserMessage(userMessage);
 
     setIsLoading(false);
@@ -354,7 +271,6 @@ ${Object.entries(riskData.sector_allocation || {})
 
   return (
     <>
-      {/* Floating Chat Button */}
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
@@ -368,10 +284,8 @@ ${Object.entries(riskData.sector_allocation || {})
         </Button>
       )}
 
-      {/* Chat Window */}
       {isOpen && (
         <Card className="fixed bottom-6 right-6 w-96 h-[500px] shadow-2xl border-0 z-50 flex flex-col bg-background">
-          {/* Header */}
           <div className="flex items-center justify-between p-4 border-b bg-primary/5 rounded-t-lg">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center">
@@ -394,7 +308,6 @@ ${Object.entries(riskData.sector_allocation || {})
             </Button>
           </div>
 
-          {/* Messages */}
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
               {messages.map((message) => (
@@ -440,7 +353,6 @@ ${Object.entries(riskData.sector_allocation || {})
             <div ref={messagesEndRef} />
           </ScrollArea>
 
-          {/* Input */}
           <div className="p-4 border-t">
             <div className="flex gap-2">
               <Input
@@ -449,7 +361,7 @@ ${Object.entries(riskData.sector_allocation || {})
                 onKeyPress={handleKeyPress}
                 placeholder={
                   hasSetTraderId
-                    ? "Ask about markets, portfolio, or trading signals..."
+                    ? "Ask about markets, portfolio, or stock prices..."
                     : "Enter your Trader ID..."
                 }
                 disabled={isLoading}

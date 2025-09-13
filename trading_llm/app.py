@@ -521,27 +521,27 @@ def clear_cache():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Health check endpoint for Render
-@app.route('/health', methods=['GET'])
-def health_check():
-    """Health check endpoint for Render monitoring"""
-    try:
-        # Check if essential services are available
-        status = {
-            'status': 'healthy',
-            'timestamp': datetime.now().isoformat(),
-            'services': {
-                'supabase': bool(SUPABASE_URL and SUPABASE_KEY),
-                'gemini': bool(GEMINI_API_KEY),
-                'market_service': bool(market_service)
-            }
-        }
-        return jsonify(status), 200
-    except Exception as e:
-        return jsonify({
-            'status': 'unhealthy',
-            'error': str(e),
-            'timestamp': datetime.now().isoformat()
-        }), 500
+# @app.route('/health', methods=['GET'])
+# def health_check():
+#     """Health check endpoint for Render monitoring"""
+#     try:
+#         # Check if essential services are available
+#         status = {
+#             'status': 'healthy',
+#             'timestamp': datetime.now().isoformat(),
+#             'services': {
+#                 'supabase': bool(SUPABASE_URL and SUPABASE_KEY),
+#                 'gemini': bool(GEMINI_API_KEY),
+#                 'market_service': bool(market_service)
+#             }
+#         }
+#         return jsonify(status), 200
+#     except Exception as e:
+#         return jsonify({
+#             'status': 'unhealthy',
+#             'error': str(e),
+#             'timestamp': datetime.now().isoformat()
+#         }), 500
 
 # Error handlers
 @app.errorhandler(404)
