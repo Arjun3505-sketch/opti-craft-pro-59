@@ -236,7 +236,7 @@ export default function StrategyBuilder() {
   };
 
   const steps = [
-    { key: 'template', label: 'Options Templates', icon: Settings },
+    // { key: 'template', label: 'Options Templates', icon: Settings },
     { key: 'algorithmic', label: 'Algorithmic', icon: BarChart3 },
     { key: 'legs', label: 'Strategy Legs', icon: Plus },
     { key: 'conditions', label: 'Conditions', icon: AlertCircle },

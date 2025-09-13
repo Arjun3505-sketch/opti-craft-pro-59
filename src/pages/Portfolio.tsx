@@ -1,157 +1,164 @@
-import { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { StockHoldingCard } from '@/components/portfolio/StockHoldingCard';
-import { OptionsPositionCard } from '@/components/portfolio/OptionsPositionCard';
-import { PortfolioSummary } from '@/components/portfolio/PortfolioSummary';
-import { HoldingsTable } from '@/components/portfolio/HoldingsTable';
-import { TransactionHistory } from '@/components/portfolio/TransactionHistory';
-import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
-import { toast } from '@/hooks/use-toast';
-import { TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Calendar } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { StockHoldingCard } from "@/components/portfolio/StockHoldingCard";
+import { OptionsPositionCard } from "@/components/portfolio/OptionsPositionCard";
+import { PortfolioSummary } from "@/components/portfolio/PortfolioSummary";
+import { HoldingsTable } from "@/components/portfolio/HoldingsTable";
+import { TransactionHistory } from "@/components/portfolio/TransactionHistory";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
+import { toast } from "@/hooks/use-toast";
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Target,
+  BarChart3,
+  Calendar,
+} from "lucide-react";
 
 // Sample stock holdings data
 const stockHoldings = [
   {
-    id: '1',
-    symbol: 'RELIANCE',
-    name: 'Reliance Industries Ltd',
+    id: "1",
+    symbol: "RELIANCE",
+    name: "Reliance Industries Ltd",
     quantity: 50,
-    avgPrice: 2450.30,
+    avgPrice: 2450.3,
     ltp: 2678.45,
     investedValue: 122515,
-    currentValue: 133922.50,
-    pnl: 11407.50,
+    currentValue: 133922.5,
+    pnl: 11407.5,
     pnlPercent: 9.31,
-    dayChange: 45.20,
-    dayChangePercent: 1.72
+    dayChange: 45.2,
+    dayChangePercent: 1.72,
   },
   {
-    id: '2',
-    symbol: 'TCS',
-    name: 'Tata Consultancy Services',
+    id: "2",
+    symbol: "TCS",
+    name: "Tata Consultancy Services",
     quantity: 25,
-    avgPrice: 3890.80,
+    avgPrice: 3890.8,
     ltp: 4156.25,
     investedValue: 97270,
     currentValue: 103906.25,
     pnl: 6636.25,
     pnlPercent: 6.82,
     dayChange: -28.75,
-    dayChangePercent: -0.69
+    dayChangePercent: -0.69,
   },
   {
-    id: '3',
-    symbol: 'HDFCBANK',
-    name: 'HDFC Bank Limited',
+    id: "3",
+    symbol: "HDFCBANK",
+    name: "HDFC Bank Limited",
     quantity: 75,
     avgPrice: 1689.45,
-    ltp: 1734.80,
+    ltp: 1734.8,
     investedValue: 126708.75,
     currentValue: 130110,
     pnl: 3401.25,
     pnlPercent: 2.68,
     dayChange: 12.35,
-    dayChangePercent: 0.72
+    dayChangePercent: 0.72,
   },
   {
-    id: '4',
-    symbol: 'INFY',
-    name: 'Infosys Limited',
+    id: "4",
+    symbol: "INFY",
+    name: "Infosys Limited",
     quantity: 40,
-    avgPrice: 1456.20,
-    ltp: 1523.90,
+    avgPrice: 1456.2,
+    ltp: 1523.9,
     investedValue: 58248,
     currentValue: 60956,
     pnl: 2708,
     pnlPercent: 4.65,
-    dayChange: -8.10,
-    dayChangePercent: -0.53
+    dayChange: -8.1,
+    dayChangePercent: -0.53,
   },
   {
-    id: '5',
-    symbol: 'ICICIBANK',
-    name: 'ICICI Bank Limited',
+    id: "5",
+    symbol: "ICICIBANK",
+    name: "ICICI Bank Limited",
     quantity: 60,
     avgPrice: 1234.75,
-    ltp: 1189.30,
+    ltp: 1189.3,
     investedValue: 74085,
     currentValue: 71358,
     pnl: -2727,
     pnlPercent: -3.68,
     dayChange: -15.45,
-    dayChangePercent: -1.28
-  }
+    dayChangePercent: -1.28,
+  },
 ];
 
 // Sample options positions data
 const optionsPositions = [
   {
-    id: '1',
-    strategy: 'Iron Condor',
-    underlying: 'NIFTY',
+    id: "1",
+    strategy: "Iron Condor",
+    underlying: "NIFTY",
     strikes: [24000, 24200, 24800, 25000],
-    expiry: '21 Nov 24',
+    expiry: "21 Nov 24",
     quantity: 50,
-    premium: 156.80,
-    ltp: 143.20,
-    pnl: -680.00,
+    premium: 156.8,
+    ltp: 143.2,
+    pnl: -680.0,
     pnlPercent: -8.67,
-    type: 'combination' as const
+    type: "combination" as const,
   },
   {
-    id: '2',
-    strategy: 'Straddle',
-    underlying: 'BANKNIFTY',
+    id: "2",
+    strategy: "Straddle",
+    underlying: "BANKNIFTY",
     strikes: [46500],
-    expiry: '21 Nov 24',
+    expiry: "21 Nov 24",
     quantity: 25,
-    premium: 284.50,
-    ltp: 312.20,
-    pnl: 692.50,
+    premium: 284.5,
+    ltp: 312.2,
+    pnl: 692.5,
     pnlPercent: 9.73,
-    type: 'combination' as const
-  }
+    type: "combination" as const,
+  },
 ];
 
 // Sample transaction history
 const transactions = [
   {
-    id: '1',
-    date: '2024-11-20',
-    time: '14:30:25',
-    symbol: 'RELIANCE',
-    type: 'BUY' as const,
+    id: "1",
+    date: "2024-11-20",
+    time: "14:30:25",
+    symbol: "RELIANCE",
+    type: "BUY" as const,
     quantity: 10,
     price: 2678.45,
-    amount: 26784.50,
-    charges: 45.30
+    amount: 26784.5,
+    charges: 45.3,
   },
   {
-    id: '2',
-    date: '2024-11-20',
-    time: '11:15:42',
-    symbol: 'TCS',
-    type: 'SELL' as const,
+    id: "2",
+    date: "2024-11-20",
+    time: "11:15:42",
+    symbol: "TCS",
+    type: "SELL" as const,
     quantity: 5,
     price: 4156.25,
     amount: 20781.25,
-    charges: 38.60
+    charges: 38.6,
   },
   {
-    id: '3',
-    date: '2024-11-19',
-    time: '15:45:10',
-    symbol: 'HDFCBANK',
-    type: 'BUY' as const,
+    id: "3",
+    date: "2024-11-19",
+    time: "15:45:10",
+    symbol: "HDFCBANK",
+    type: "BUY" as const,
     quantity: 25,
-    price: 1734.80,
-    amount: 43370.00,
-    charges: 52.40
-  }
+    price: 1734.8,
+    amount: 43370.0,
+    charges: 52.4,
+  },
 ];
 
 export default function Portfolio() {
@@ -163,9 +170,11 @@ export default function Portfolio() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       setUser(user);
-      
+
       if (user) {
         await fetchPortfolioData(user.id);
       } else {
@@ -175,16 +184,16 @@ export default function Portfolio() {
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          fetchPortfolioData(session.user.id);
-        } else {
-          setLoading(false);
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchPortfolioData(session.user.id);
+      } else {
+        setLoading(false);
       }
-    );
+    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -194,10 +203,10 @@ export default function Portfolio() {
     if (positions && positions.length > 0) {
       // Update prices immediately
       updatePositionPrices();
-      
+
       // Set up interval for price updates every 5 minutes to avoid rate limiting
       const priceUpdateInterval = setInterval(updatePositionPrices, 300000);
-      
+
       return () => clearInterval(priceUpdateInterval);
     }
   }, [positions?.length]);
@@ -208,21 +217,21 @@ export default function Portfolio() {
 
       // Fetch portfolio - get the most recent one for this user
       const { data: portfolioData, error: portfolioError } = await supabase
-        .from('portfolios')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
+        .from("portfolios")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (portfolioError) {
-        console.error('Portfolio fetch error:', portfolioError);
+        console.error("Portfolio fetch error:", portfolioError);
         setLoading(false);
         return;
       }
 
       if (!portfolioData) {
-        console.log('No portfolio found for user');
+        console.log("No portfolio found for user");
         setLoading(false);
         return;
       }
@@ -230,107 +239,115 @@ export default function Portfolio() {
       setPortfolio(portfolioData);
 
       const { data: positionsData, error: positionsError } = await supabase
-        .from('positions')
-        .select('*')
-        .eq('portfolio_id', portfolioData.id)
-        .gt('quantity', 0);
+        .from("positions")
+        .select("*")
+        .eq("portfolio_id", portfolioData.id)
+        .gt("quantity", 0);
 
       if (!positionsError) {
         setPositions(positionsData || []);
       }
 
-      const { data: transactionsData, error: transactionsError } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('portfolio_id', portfolioData.id)
-        .order('executed_at', { ascending: false })
-        .limit(50);
+      const { data: transactionsData, error: transactionsError } =
+        await supabase
+          .from("transactions")
+          .select("*")
+          .eq("portfolio_id", portfolioData.id)
+          .order("executed_at", { ascending: false })
+          .limit(50);
 
       if (!transactionsError) {
         setTransactions(transactionsData || []);
       }
     } catch (error) {
-      console.error('Error fetching portfolio data:', error);
+      console.error("Error fetching portfolio data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Real-time price updates for positions  
+  // Real-time price updates for positions
   const updatePositionPrices = async () => {
     if (!positions || positions.length === 0) return;
-    
+
     try {
       const updatedPositions = await Promise.all(
         positions.map(async (position) => {
           try {
             // Try to get real-time price, fallback to current price
-            const response = await fetch(`http://localhost:5000/api/realtime/${position.symbol}.NS`).catch(() => null);
-            
+            const response = await fetch(
+              `http://localhost:5000/api/realtime/${position.symbol}.NS`
+            ).catch(() => null);
+
             if (response) {
               const data = await response.json();
               if (data.success) {
                 const updatedPosition = {
                   ...position,
-                  current_price: data.data.price
+                  current_price: data.data.price,
                 };
-                
+
                 // Update position in database
                 await supabase
-                  .from('positions')
+                  .from("positions")
                   .update({ current_price: data.data.price })
-                  .eq('id', position.id);
-                  
+                  .eq("id", position.id);
+
                 return updatedPosition;
               }
             }
-            
+
             // If API fails, slightly randomize price for simulation
             const priceVariation = (Math.random() - 0.5) * 0.02; // ±1% variation
-            const newPrice = Number(position.current_price) * (1 + priceVariation);
-            
+            const newPrice =
+              Number(position.current_price) * (1 + priceVariation);
+
             const updatedPosition = {
               ...position,
-              current_price: newPrice
+              current_price: newPrice,
             };
-            
+
             await supabase
-              .from('positions')
+              .from("positions")
               .update({ current_price: newPrice })
-              .eq('id', position.id);
-              
+              .eq("id", position.id);
+
             return updatedPosition;
           } catch (error) {
-            console.error(`Error updating price for ${position.symbol}:`, error);
+            console.error(
+              `Error updating price for ${position.symbol}:`,
+              error
+            );
             return position;
           }
         })
       );
-      
+
       setPositions(updatedPositions);
-      
+
       // Recalculate portfolio total value
       if (portfolio) {
         const totalPositionValue = updatedPositions.reduce((total, pos) => {
-          return total + (Number(pos.current_price) * Number(pos.quantity));
+          return total + Number(pos.current_price) * Number(pos.quantity);
         }, 0);
-        
-        const newTotalValue = Number(portfolio.cash_balance) + totalPositionValue;
-        
+
+        const newTotalValue =
+          Number(portfolio.cash_balance) + totalPositionValue;
+
         await supabase
-          .from('portfolios')
+          .from("portfolios")
           .update({ total_value: newTotalValue })
-          .eq('id', portfolio.id);
-          
+          .eq("id", portfolio.id);
+
         setPortfolio({ ...portfolio, total_value: newTotalValue });
       }
     } catch (error) {
-      console.error('Error updating position prices:', error);
+      console.error("Error updating position prices:", error);
     }
   };
 
   // Convert database positions to UI format
-  const convertedPositions = positions.map(pos => ({
+  const convertedPositions = positions.map((pos) => ({
     id: pos.id,
     symbol: pos.symbol,
     name: pos.symbol,
@@ -342,11 +359,11 @@ export default function Portfolio() {
     pnl: (pos.current_price - pos.avg_price) * pos.quantity,
     pnlPercent: ((pos.current_price - pos.avg_price) / pos.avg_price) * 100,
     dayChange: 0,
-    dayChangePercent: 0
+    dayChangePercent: 0,
   }));
 
   // Convert database transactions to UI format
-  const convertedTransactions = transactions.map(tx => ({
+  const convertedTransactions = transactions.map((tx) => ({
     id: tx.id,
     date: new Date(tx.executed_at).toLocaleDateString(),
     time: new Date(tx.executed_at).toLocaleTimeString(),
@@ -355,13 +372,20 @@ export default function Portfolio() {
     quantity: tx.quantity,
     price: tx.price,
     amount: tx.total_amount,
-    charges: tx.fees
+    charges: tx.fees,
   }));
 
-  const totalInvested = convertedPositions.reduce((sum, stock) => sum + stock.investedValue, 0);
-  const totalCurrent = convertedPositions.reduce((sum, stock) => sum + stock.currentValue, 0);
+  const totalInvested = convertedPositions.reduce(
+    (sum, stock) => sum + stock.investedValue,
+    0
+  );
+  const totalCurrent = convertedPositions.reduce(
+    (sum, stock) => sum + stock.currentValue,
+    0
+  );
   const totalPnL = totalCurrent - totalInvested;
-  const totalPnLPercent = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+  const totalPnLPercent =
+    totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
 
   if (!user) {
     return (
@@ -398,7 +422,7 @@ export default function Portfolio() {
   return (
     <div className="space-y-6">
       {/* Portfolio Summary */}
-      <PortfolioSummary 
+      <PortfolioSummary
         totalInvested={totalInvested}
         totalCurrent={totalCurrent}
         totalPnL={totalPnL}

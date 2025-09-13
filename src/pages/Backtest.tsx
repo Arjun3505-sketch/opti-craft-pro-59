@@ -1,9 +1,15 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BacktestForm } from '@/components/backtest/BacktestForm';
-import { BacktestResults } from '@/components/backtest/BacktestResults';
-import { BacktestHistory } from '@/components/backtest/BacktestHistory';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { BacktestForm } from "@/components/backtest/BacktestForm";
+import { BacktestResults } from "@/components/backtest/BacktestResults";
+import { BacktestHistory } from "@/components/backtest/BacktestHistory";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export interface BacktestParams {
   symbol: string;
@@ -67,33 +73,35 @@ export interface BacktestResult {
 }
 
 const Backtest = () => {
-  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
+  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(
+    null
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [backtestHistory, setBacktestHistory] = useState<BacktestResult[]>([]);
 
   const runBacktest = async (params: BacktestParams) => {
     setIsLoading(true);
-     console.log('Backtest parameters:', params); // Add this line
+    console.log("Backtest parameters:", params); // Add this line
 
     try {
-      const response = await fetch('http://localhost:5000/api/backtest', {
-        method: 'POST',
+      const response = await fetch("http://localhost:5000/api/backtest", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(params),
       });
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         setBacktestResult(result);
-        setBacktestHistory(prev => [result, ...prev.slice(0, 9)]); // Keep last 10 results
+        setBacktestHistory((prev) => [result, ...prev.slice(0, 9)]); // Keep last 10 results
       } else {
-        console.error('Backtest failed:', result.error);
+        console.error("Backtest failed:", result.error);
       }
     } catch (error) {
-      console.error('Error running backtest:', error);
+      console.error("Error running backtest:", error);
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +154,8 @@ const Backtest = () => {
                   <CardContent className="flex items-center justify-center h-96">
                     <div className="text-center">
                       <p className="text-muted-foreground">
-                        Configure your strategy and click "Run Backtest" to see results
+                        Configure your strategy and click "Run Backtest" to see
+                        results
                       </p>
                     </div>
                   </CardContent>
@@ -157,7 +166,10 @@ const Backtest = () => {
         </TabsContent>
 
         <TabsContent value="history">
-          <BacktestHistory history={backtestHistory} onSelectResult={setBacktestResult} />
+          <BacktestHistory
+            history={backtestHistory}
+            onSelectResult={setBacktestResult}
+          />
         </TabsContent>
       </Tabs>
     </div>
