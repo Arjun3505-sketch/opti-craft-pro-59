@@ -47,8 +47,8 @@ export function Header({ onMenuToggle, sidebarCollapsed }: HeaderProps) {
       <div className="flex items-center space-x-3">
         {/* Market Status */}
         <div className="hidden md:flex items-center space-x-2">
-          <div className="h-2 w-2 bg-profit rounded-full animate-pulse"></div>
-          <span className="text-sm text-muted-foreground">Market Open</span>
+          <div className="h-2 w-2 bg-loss rounded-full animate-pulse"></div>
+          <span className="text-sm text-muted-foreground">Market Closed</span>
         </div>
 
         {/* Notifications */}

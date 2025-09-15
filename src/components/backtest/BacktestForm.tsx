@@ -21,8 +21,8 @@ const stockOptions = [
 export function BacktestForm({ onSubmit, isLoading }: BacktestFormProps) {
   const [formData, setFormData] = useState<BacktestParams>({
     symbol: 'RELIANCE.NS',
-    startDate: '2020-01-01',
-    endDate: '2024-12-31',
+    startDate: '2025-01-01',
+    endDate: '2025-08-31',
     initialCash: 10000,
     commission: 0.002,
   });

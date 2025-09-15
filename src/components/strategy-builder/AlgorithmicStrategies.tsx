@@ -54,8 +54,8 @@ export function AlgorithmicStrategies({ onRunBacktest, isLoading = false }: Algo
   const [config, setConfig] = useState<AlgorithmicConfig>({
     strategyType: 'buy_and_hold',
     symbol: 'RELIANCE.NS',
-    startDate: '2020-01-01',
-    endDate: '2024-12-31',
+    startDate: '2025-01-01',
+    endDate: '2025-08-31',
     initialCash: 10000,
     commission: 0.002,
     shortWindow: 20,

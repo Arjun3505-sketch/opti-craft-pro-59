@@ -55,7 +55,7 @@ export function PnLChart() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Daily P&L - Candlestick View</span>
+          <span>Reliance- Candlestick View</span>
           <span
             className={`text-lg font-bold ${
               isProfit ? "text-profit" : "text-loss"

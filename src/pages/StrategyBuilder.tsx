@@ -238,7 +238,7 @@ export default function StrategyBuilder() {
   const steps = [
     // { key: 'template', label: 'Options Templates', icon: Settings },
     { key: 'algorithmic', label: 'Algorithmic', icon: BarChart3 },
-    { key: 'legs', label: 'Strategy Legs', icon: Plus },
+    //{ key: 'legs', label: 'Strategy Legs', icon: Plus },
     { key: 'conditions', label: 'Conditions', icon: AlertCircle },
     { key: 'visualization', label: 'Results', icon: BarChart3 }
   ];
@@ -252,7 +252,7 @@ export default function StrategyBuilder() {
           <p className="text-muted-foreground">Design and test your options trading strategies</p>
         </div>
         
-        <div className="flex items-center space-x-3">
+        {/* <div className="flex items-center space-x-3">
           <Button variant="outline" onClick={saveStrategy}>
             <Save className="h-4 w-4 mr-2" />
             Save Strategy
@@ -261,10 +261,10 @@ export default function StrategyBuilder() {
             <Play className="h-4 w-4 mr-2" />
             Deploy Live
           </Button>
-        </div>
+        </div> */}
       </div>
 
-      {/* Strategy Info */}
+      {/* Strategy Info
       <Card>
         <CardHeader>
           <CardTitle>Strategy Information</CardTitle>
@@ -319,7 +319,7 @@ export default function StrategyBuilder() {
             />
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Step Navigation */}
       <div className="flex space-x-2 overflow-x-auto">
@@ -349,7 +349,10 @@ export default function StrategyBuilder() {
 
       {/* Step Content */}
       {activeStep === 'template' && (
-        <StrategyTemplates onSelectTemplate={handleSelectTemplate} />
+       <AlgorithmicStrategies 
+          onRunBacktest={handleRunBacktest}
+          isLoading={isBacktesting}
+        />
       )}
 
       {activeStep === 'algorithmic' && (
