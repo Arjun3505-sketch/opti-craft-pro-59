@@ -1,239 +1,43 @@
-import { useState } from 'react';
-import {
-  DndContext,
-  DragEndEvent,
-  DragStartEvent,
-  DragOverlay,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
-import { 
-  Plus, 
-  Save, 
-  Play, 
-  BarChart3, 
-  Settings,
-  AlertCircle,
-  CheckCircle
-} from 'lucide-react';
-
-import { OptionLeg, EntryCondition, ExitCondition, TradingStrategy, StrategyTemplate, BacktestResult } from '@/types/strategy';
-import { StrategyTemplates } from '@/components/strategy-builder/StrategyTemplates';
-import { StrategyLegCard } from '@/components/strategy-builder/StrategyLegCard';
-import { ConditionsBuilder } from '@/components/strategy-builder/ConditionsBuilder';
-import { PnLVisualization } from '@/components/strategy-builder/PnLVisualization';
-import { AlgorithmicStrategies } from '@/components/strategy-builder/AlgorithmicStrategies';
-import { BacktestResults } from '@/components/backtest/BacktestResults';
-import { LegEditModal } from '@/components/strategy-builder/LegEditModal';
-import { StrategyValidation } from '@/components/strategy-builder/StrategyValidation';
-import { StrategySummary } from '@/components/strategy-builder/StrategySummary';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { AlgorithmicTradingInterface } from '@/components/paper-trading/AlgorithmicTradingInterface';
 
 export default function StrategyBuilder() {
-  const [strategy, setStrategy] = useState<Partial<TradingStrategy>>({
-    name: '',
-    description: '',
-    type: 'neutral',
-    legs: [],
-    entryConditions: [],
-    exitConditions: [],
-    isActive: false
-  });
-  
-  const [activeStep, setActiveStep] = useState<'template' | 'algorithmic' | 'legs' | 'conditions' | 'visualization'>('template');
-  const [draggedLeg, setDraggedLeg] = useState<OptionLeg | null>(null);
-  const [editingLeg, setEditingLeg] = useState<OptionLeg | null>(null);
-  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
-  const [isBacktesting, setIsBacktesting] = useState(false);
+  const [portfolio, setPortfolio] = useState<any>(null);
+  const [positions, setPositions] = useState<any[]>([]);
+  const [userId, setUserId] = useState<string>('');
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  useEffect(() => {
+    const fetchUserAndPortfolio = async () => {
+      try {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user?.id) return;
+        
+        setUserId(user.id);
 
-  // Template selection handler
-  const handleSelectTemplate = (template: StrategyTemplate) => {
-    const newLegs: OptionLeg[] = template.legs.map((legTemplate, index) => ({
-      id: `leg-${Date.now()}-${index}`,
-      ...legTemplate,
-      strike: 24100 + (index * 50), // Default strikes
-      expiry: '21 Nov 24',
-      premium: 150 + Math.random() * 100
-    }));
+        // Fetch user's portfolio
+        const { data: portfolioData, error: portfolioError } = await supabase
+          .from('portfolios')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
 
-    const newEntryConditions: EntryCondition[] = template.defaultConditions.entry.map((condition, index) => ({
-      id: `entry-${Date.now()}-${index}`,
-      ...condition
-    }));
+        if (portfolioError) throw portfolioError;
+        setPortfolio(portfolioData);
 
-    const newExitConditions: ExitCondition[] = template.defaultConditions.exit.map((condition, index) => ({
-      id: `exit-${Date.now()}-${index}`,
-      ...condition
-    }));
+        // Fetch user's positions
+        const { data: positionsData, error: positionsError } = await supabase
+          .from('positions')
+          .select('*')
+          .eq('portfolio_id', portfolioData.id);
 
-    setStrategy({
-      ...strategy,
-      name: template.name,
-      description: template.description,
-      legs: newLegs,
-      entryConditions: newEntryConditions,
-      exitConditions: newExitConditions
-    });
-
-    setActiveStep('legs');
-    toast.success(`${template.name} template loaded successfully!`);
-  };
-
-  // Add new leg
-  const addNewLeg = () => {
-    const newLeg: OptionLeg = {
-      id: `leg-${Date.now()}`,
-      type: 'CE',
-      action: 'BUY',
-      strike: 24100,
-      expiry: '21 Nov 24',
-      quantity: 1,
-      lotSize: 25,
-      premium: 150
-    };
-    
-    setStrategy({
-      ...strategy,
-      legs: [...(strategy.legs || []), newLeg]
-    });
-  };
-
-  // Remove leg
-  const removeLeg = (legId: string) => {
-    setStrategy({
-      ...strategy,
-      legs: strategy.legs?.filter(leg => leg.id !== legId) || []
-    });
-  };
-
-  // Edit leg
-  const editLeg = (leg: OptionLeg) => {
-    setEditingLeg(leg);
-  };
-
-  // Update leg
-  const updateLeg = (updatedLeg: OptionLeg) => {
-    setStrategy({
-      ...strategy,
-      legs: strategy.legs?.map(leg => leg.id === updatedLeg.id ? updatedLeg : leg) || []
-    });
-    setEditingLeg(null);
-  };
-
-  // Drag handlers
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    const leg = strategy.legs?.find(l => l.id === active.id);
-    setDraggedLeg(leg || null);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (over && active.id !== over.id) {
-      const legs = strategy.legs || [];
-      const oldIndex = legs.findIndex(leg => leg.id === active.id);
-      const newIndex = legs.findIndex(leg => leg.id === over.id);
-      
-      setStrategy({
-        ...strategy,
-        legs: arrayMove(legs, oldIndex, newIndex)
-      });
-    }
-    
-    setDraggedLeg(null);
-  };
-
-  // Save strategy
-  const saveStrategy = () => {
-    if (!strategy.name) {
-      toast.error('Please provide a strategy name');
-      return;
-    }
-    
-    if (!strategy.legs || strategy.legs.length === 0) {
-      toast.error('Please add at least one option leg');
-      return;
-    }
-
-    toast.success('Strategy saved successfully!');
-    console.log('Saving strategy:', strategy);
-  };
-
-  // Deploy strategy
-  const deployStrategy = () => {
-    if (!strategy.name || !strategy.legs || strategy.legs.length === 0) {
-      toast.error('Please complete the strategy before deploying');
-      return;
-    }
-
-    toast.success('Strategy deployed for live trading!');
-    setStrategy({ ...strategy, isActive: true });
-  };
-
-  // Run algorithmic backtest
-  const handleRunBacktest = async (config: any) => {
-    setIsBacktesting(true);
-    console.log('Running backtest with config:', config);
-    
-    try {
-      const response = await fetch('http://localhost:5000/api/backtest', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          symbol: config.symbol,
-          startDate: config.startDate,
-          endDate: config.endDate,
-          initialCash: config.initialCash,
-          commission: config.commission,
-          strategyType: config.strategyType,
-          shortWindow: config.shortWindow,
-          longWindow: config.longWindow
-        }),
-      });
-      
-      const result = await response.json();
-      console.log('Backtest result:', result);
-      
-      if (result.success) {
-        setBacktestResult(result);
-        toast.success(`Backtest completed! Final Return: ${result.stats.totalReturn.toFixed(2)}%`);
-        setActiveStep('visualization');
-      } else {
-        toast.error(result.error || 'Backtest failed');
+        if (positionsError) throw positionsError;
+        setPositions(positionsData || []);
+      } catch (error) {
+        console.error('Error fetching data:', error);
       }
-    } catch (error) {
-      toast.error('Failed to connect to backend. Make sure the Python server is running.');
-      console.error('Backtest error:', error);
-    } finally {
-      setIsBacktesting(false);
-    }
-  };
+    };
 
   const steps = [
     // { key: 'template', label: 'Options Templates', icon: Settings },
@@ -245,7 +49,6 @@ export default function StrategyBuilder() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Strategy Builder</h1>
